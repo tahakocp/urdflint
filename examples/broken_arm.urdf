@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<robot name="broken_arm">
+  <link name="base_link">
+    <inertial>
+      <mass value="5.0"/>
+      <inertia ixx="0.02" ixy="0" ixz="0" iyy="0.02" iyz="0" izz="0.03"/>
+    </inertial>
+  </link>
+  <link name="shoulder">
+    <inertial>
+      <mass value="1.2"/>
+      <!-- exported from CAD in g*mm^2 and divided once -->
+      <inertia ixx="0.0004" ixy="0" ixz="0" iyy="0.0004" iyz="0" izz="0.09"/>
+    </inertial>
+    <visual><geometry><mesh filename="meshes/shoulder.stl"/></geometry></visual>
+  </link>
+  <link name="forearm"/>
+  <link name="wrist">
+    <inertial>
+      <mass value="0"/>
+      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+    </inertial>
+  </link>
+
+  <joint name="shoulder_pan" type="revolute">
+    <parent link="base_link"/>
+    <child link="shoulder"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-170" upper="170" effort="40" velocity="1.5"/>
+  </joint>
+  <joint name="elbow" type="revolute">
+    <parent link="shoulder"/>
+    <child link="forearm"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="2.0" upper="0.0" effort="30" velocity="2.0"/>
+  </joint>
+  <joint name="wrist_roll" type="continuous">
+    <parent link="forearm"/>
+    <child link="wrist_link"/>
+    <axis xyz="1 0 0"/>
+  </joint>
+</robot>
