@@ -15,7 +15,7 @@ examples/broken_arm.urdf:37: error[E012]: joint `wrist_roll` child link `wrist_l
 examples/broken_arm.urdf: 4 links, 3 joints (3 DOF), 6.200 kg; 6 error(s), 2 warning(s)
 ```
 
-Running it over a public collection of 320 URDF files (see [numbers](#numbers)) took 0.7 seconds and flagged 100 of them with at least one error.
+Running it over a public collection of 320 URDF files (see [numbers](#numbers)) took under a second and flagged 81 of them with at least one error.
 
 ## Why
 
@@ -74,22 +74,23 @@ The inertia test diagonalises the 3x3 matrix (Jacobi rotations) instead of check
 
 ## Numbers
 
-Corpus: [Daniella1/urdf_files_dataset](https://github.com/Daniella1/urdf_files_dataset) at commit `81f4cda`, 320 `.urdf` files from ROS, Drake and MATLAB robot descriptions. Reproduce with `scripts/corpus.sh`. Release build, one core, files already in the page cache: 0.7 s for everything, including reading the STL meshes that are present.
+Corpus: [Daniella1/urdf_files_dataset](https://github.com/Daniella1/urdf_files_dataset) at commit `81f4cda`, 320 `.urdf` files from ROS, Drake and MATLAB robot descriptions. Reproduce with `scripts/corpus.sh`. Release build, files already in the page cache: 0.8 s wall for everything, including reading the STL meshes that are present.
 
 | Finding | Files |
 |---|---|
-| zero-length joint axis (E023) | 34 |
 | principal moments break the triangle inequality (E032) | 28 |
 | mesh missing on disk (E040) | 23 |
 | sphere, box or cylinder with zero or negative size (E041) | 15 |
 | xacro left unexpanded (E003) | 11 |
 | matrix not positive definite (E031) | 8 |
 | joint refers to an undefined link (E012) | 5 |
-| zero or negative mass on a moving link (E030) | 4 |
+| zero or negative mass (E030) | 4 |
 | moving link with no inertial (W032) | 106 |
 | zero effort or velocity limit (W021) | 97 |
 
-100 of the 320 files have at least one error; 86 still do when the mesh-path rule E040 is excluded. Some of these are deliberate: a zero-length axis on a fixed-purpose end-effector joint is harmless in most tools, and a link with no inertial is fine in a visual-only model. That is why those are what they are, and why `--allow` exists. E040 depends on how packages are laid out in that dataset, so treat that line as an upper bound.
+81 of the 320 files have at least one error; 66 still do when the mesh-path rule E040 is excluded. Not all of these will hurt you. A link with no inertial is fine in a visual-only model, and a zero effort limit is fine if nothing ever applies torque. Those are warnings for that reason, and `--allow` exists for them. E040 depends on how packages are laid out in that dataset, so read that line as an upper bound.
+
+A zero-length axis (E023) did not show up at all, because every case in this corpus sits on a fixed joint, where the axis is ignored and is not checked.
 
 ## What it does not do
 

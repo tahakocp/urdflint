@@ -267,7 +267,9 @@ fn check_joint(cx: &mut Ctx, j: Node, all: &[Node]) {
         cx.floats(o, "xyz", 3, false);
         cx.floats(o, "rpy", 3, false);
     }
-    if let Some(a) = j.children().find(|c| c.has_tag_name("axis")) {
+    // Fixed joints ignore the axis, and exporters leave 0 0 0 there.
+    let axis = j.children().find(|c| c.has_tag_name("axis")).filter(|_| kind != "fixed");
+    if let Some(a) = axis {
         if let Some(v) = cx.floats(a, "xyz", 3, false) {
             if v.iter().map(|x| x * x).sum::<f64>() < 1e-18 {
                 cx.push("E023", a, format!("joint `{name}` axis is 0 0 0"));
