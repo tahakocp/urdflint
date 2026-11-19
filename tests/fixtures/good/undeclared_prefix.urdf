@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<robot name="x">
+<link name="a"/>
+<gazebo>
+<sensor:camera name="c"><sensor:imageSize>640 480</sensor:imageSize></sensor:camera>
+</gazebo>
+</robot>

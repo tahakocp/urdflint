@@ -2,6 +2,7 @@ use crate::inertia::{self, Verdict};
 use crate::rules::Diag;
 use crate::stl;
 use roxmltree::{Document, Node};
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
@@ -70,14 +71,41 @@ impl Ctx<'_, '_> {
     }
 }
 
+/// Gazebo plugins and sensor blocks often use prefixes (`sensor:`, `controller:`) that are never
+/// declared. URDF readers ignore namespaces, roxmltree does not, so rename the prefix in place.
+/// Same byte length, so line and column numbers stay correct.
+fn strip_unknown_prefixes(src: &str) -> Cow<'_, str> {
+    let mut text = Cow::Borrowed(src);
+    for _ in 0..16 {
+        let prefix = match Document::parse(&text) {
+            Err(roxmltree::Error::UnknownNamespace(p, _)) if p != "xacro" => p,
+            _ => break,
+        };
+        let mut out = String::with_capacity(text.len());
+        let mut rest: &str = &text;
+        let pat = format!("{prefix}:");
+        while let Some(i) = rest.find(&pat) {
+            let (head, tail) = rest.split_at(i);
+            out.push_str(head);
+            let at_name_start = head.chars().next_back().is_some_and(|c| c == '<' || c == '/' || c.is_whitespace());
+            out.push_str(&prefix);
+            out.push(if at_name_start { '_' } else { ':' });
+            rest = &tail[pat.len()..];
+        }
+        out.push_str(rest);
+        text = Cow::Owned(out);
+    }
+    text
+}
+
 pub fn lint_str(src: &str, file: &Path, opts: &Options) -> Report {
     let mut report = Report { diags: Vec::new(), summary: Summary::default() };
-    let doc = match Document::parse(src) {
+    let text = strip_unknown_prefixes(src);
+    let doc = match Document::parse(&text) {
         Ok(d) => d,
         Err(e) => {
-            let pos = e.pos();
-            let code = if src.contains("xacro:") { "E003" } else { "E001" };
-            report.diags.push(Diag::new(code, pos.row, e.to_string()));
+            let code = if src.contains("<xacro:") { "E003" } else { "E001" };
+            report.diags.push(Diag::new(code, e.pos().row, e.to_string()));
             return report;
         }
     };
@@ -89,8 +117,12 @@ pub fn lint_str(src: &str, file: &Path, opts: &Options) -> Report {
         report.diags = cx.out;
         return report;
     }
-    if src.contains("xmlns:xacro") || src.contains("${") || src.contains("<xacro:") {
-        cx.push("E003", root, "file contains xacro namespaces or ${...} expressions".into());
+    let xacro = doc.descendants().find(|n| {
+        n.tag_name().namespace().is_some_and(|ns| ns.contains("xacro"))
+            || n.attributes().any(|a| a.value().contains("${") || a.value().contains("$("))
+    });
+    if let Some(n) = xacro {
+        cx.push("E003", n, "file contains xacro elements or ${...} expressions".into());
         report.diags = cx.out;
         return report;
     }
@@ -236,7 +268,7 @@ fn check_joint(cx: &mut Ctx, j: Node, all: &[Node]) {
         cx.floats(o, "rpy", 3, false);
     }
     if let Some(a) = j.children().find(|c| c.has_tag_name("axis")) {
-        if let Some(v) = cx.floats(a, "xyz", 3, true) {
+        if let Some(v) = cx.floats(a, "xyz", 3, false) {
             if v.iter().map(|x| x * x).sum::<f64>() < 1e-18 {
                 cx.push("E023", a, format!("joint `{name}` axis is 0 0 0"));
             }
@@ -270,7 +302,8 @@ fn check_joint(cx: &mut Ctx, j: Node, all: &[Node]) {
             if lo > hi {
                 cx.push("E022", limit, format!("joint `{name}` lower {lo} > upper {hi}"));
             }
-            if kind == "revolute" && (lo.abs() > 4.0 * std::f64::consts::PI || hi.abs() > 4.0 * std::f64::consts::PI) {
+            let wide = |v: f64| (4.0 * std::f64::consts::PI..=1000.0).contains(&v.abs());
+            if kind == "revolute" && (wide(lo) || wide(hi)) {
                 cx.push("W022", limit, format!("joint `{name}` range [{lo}, {hi}] is wider than two turns each way; degrees?"));
             }
         }
@@ -285,7 +318,7 @@ fn check_joint(cx: &mut Ctx, j: Node, all: &[Node]) {
 fn check_link(cx: &mut Ctx, l: Node, moving: bool, base: &Path, opts: &Options, materials: &HashSet<&str>) {
     let name = l.attribute("name").unwrap_or("?");
     match l.children().find(|c| c.has_tag_name("inertial")) {
-        Some(i) => check_inertial(cx, i, name),
+        Some(i) => check_inertial(cx, i, name, moving),
         None if moving => cx.push("W032", l, format!("link `{name}` is moved by a joint but has no <inertial>")),
         None => {}
     }
@@ -312,7 +345,15 @@ fn check_link(cx: &mut Ctx, l: Node, moving: bool, base: &Path, opts: &Options, 
     }
 }
 
-fn check_inertial(cx: &mut Ctx, i: Node, link: &str) {
+fn zero_inertia(i: Node) -> bool {
+    i.children().find(|c| c.has_tag_name("inertia")).is_some_and(|t| {
+        ["ixx", "ixy", "ixz", "iyy", "iyz", "izz"]
+            .iter()
+            .all(|a| t.attribute(*a).and_then(|v| v.parse::<f64>().ok()) == Some(0.0))
+    })
+}
+
+fn check_inertial(cx: &mut Ctx, i: Node, link: &str, moving: bool) {
     let mass_node = i.children().find(|c| c.has_tag_name("mass"));
     let mass = mass_node.and_then(|m| cx.floats(m, "value", 1, true)).map(|v| v[0]);
     if mass_node.is_none() {
@@ -320,8 +361,12 @@ fn check_inertial(cx: &mut Ctx, i: Node, link: &str) {
     }
     if let Some(m) = mass {
         let at = mass_node.unwrap();
-        if m <= 0.0 {
+        if m == 0.0 && zero_inertia(i) && !moving {
+            cx.push("W034", at, format!("link `{link}` has mass 0 and zero inertia"));
+            return;
+        } else if m <= 0.0 {
             cx.push("E030", at, format!("link `{link}` mass is {m}"));
+            return;
         } else if !(1e-4..=1e4).contains(&m) {
             cx.push("W030", at, format!("link `{link}` mass is {m} kg"));
         }
