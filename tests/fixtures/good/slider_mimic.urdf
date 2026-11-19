@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<robot name="gripper">
+  <link name="palm"><inertial><mass value="0.3"/><inertia ixx="1e-4" ixy="0" ixz="0" iyy="1e-4" iyz="0" izz="1e-4"/></inertial></link>
+  <link name="left"><inertial><mass value="0.05"/><inertia ixx="1e-5" ixy="0" ixz="0" iyy="1e-5" iyz="0" izz="5e-6"/></inertial></link>
+  <link name="right"><inertial><mass value="0.05"/><inertia ixx="1e-5" ixy="0" ixz="0" iyy="1e-5" iyz="0" izz="5e-6"/></inertial></link>
+  <joint name="finger_l" type="prismatic">
+    <parent link="palm"/><child link="left"/><axis xyz="0 1 0"/>
+    <limit lower="0" upper="0.04" effort="10" velocity="0.2"/>
+  </joint>
+  <joint name="finger_r" type="prismatic">
+    <parent link="palm"/><child link="right"/><axis xyz="0 -1 0"/>
+    <limit lower="0" upper="0.04" effort="10" velocity="0.2"/>
+    <mimic joint="finger_l" multiplier="1"/>
+  </joint>
+</robot>

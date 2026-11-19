@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<robot name="bad">
+<link name="a"><inertial><mass value="1"/><inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01"/></inertial></link>
+<link name="b"/>
+<joint name="j" type="revolute"><parent link="a"/><child link="b"/><limit lower="-1" upper="1" effort="5" velocity="1"/></joint>
+</robot>
