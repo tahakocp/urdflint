@@ -1,7 +1,7 @@
 # Contributing
 
 ```
-git clone https://github.com/TahaKocpinar/urdflint
+git clone https://github.com/tahakocp/urdflint
 cd urdflint
 cargo test
 ```

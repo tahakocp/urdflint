@@ -5,7 +5,7 @@ edition = "2024"
 rust-version = "1.85"
 description = "Fast linter for URDF robot descriptions: broken kinematic trees, impossible inertias, bad joint limits, missing meshes."
 license = "MIT"
-repository = "https://github.com/TahaKocpinar/urdflint"
+repository = "https://github.com/tahakocp/urdflint"
 keywords = ["urdf", "robotics", "ros", "linter", "simulation"]
 categories = ["command-line-utilities", "development-tools", "science::robotics"]
 

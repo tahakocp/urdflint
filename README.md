@@ -33,10 +33,10 @@ Most URDF mistakes show up late. A typo in a `<child link>` loads fine in some t
 
 ## Install
 
-Prebuilt binaries for Linux, macOS (Apple silicon) and Windows are attached to each [release](https://github.com/TahaKocpinar/urdflint/releases). With a Rust toolchain:
+Prebuilt binaries for Linux, macOS (Apple silicon) and Windows are attached to each [release](https://github.com/tahakocp/urdflint/releases). With a Rust toolchain:
 
 ```
-cargo install --git https://github.com/TahaKocpinar/urdflint
+cargo install --git https://github.com/tahakocp/urdflint
 ```
 
 ## Use
@@ -55,7 +55,7 @@ In GitHub Actions, `--format github` turns findings into inline annotations on t
 
 ```yaml
 - run: |
-    curl -sL https://github.com/TahaKocpinar/urdflint/releases/download/v0.1.0/urdflint-v0.1.0-x86_64-unknown-linux-gnu.tar.gz | tar xz --strip-components=1
+    curl -sL https://github.com/tahakocp/urdflint/releases/download/v0.1.0/urdflint-v0.1.0-x86_64-unknown-linux-gnu.tar.gz | tar xz --strip-components=1
     ./urdflint --format github --deny-warnings description/
 ```
 
