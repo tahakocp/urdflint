@@ -1,6 +1,12 @@
 # urdflint
 
-A single-binary linter for URDF robot descriptions. It finds broken kinematic trees, impossible inertias, empty joint ranges and missing meshes before your simulator does, and it reports the line number.
+**Catch broken URDF robot descriptions before your simulator does.** One binary, 31 rules, file and line for every finding, ready for CI.
+
+![urdflint reporting six errors and two warnings in a broken URDF, then explaining rule E032](docs/demo.gif)
+
+It finds broken kinematic trees, impossible inertias, empty joint ranges and missing meshes. The recording above is a real run on [examples/broken_arm.urdf](examples/broken_arm.urdf) (cast file: [docs/demo.cast](docs/demo.cast)).
+
+<details><summary>Same output as text</summary>
 
 ```
 $ urdflint examples/broken_arm.urdf
@@ -14,6 +20,8 @@ examples/broken_arm.urdf:35: error[E022]: joint `elbow` lower 2 > upper 0
 examples/broken_arm.urdf:37: error[E012]: joint `wrist_roll` child link `wrist_link` is not defined
 examples/broken_arm.urdf: 4 links, 3 joints (3 DOF), 6.200 kg; 6 error(s), 2 warning(s)
 ```
+
+</details>
 
 Running it over a public collection of 320 URDF files (see [numbers](#numbers)) took under a second and flagged 81 of them with at least one error.
 
